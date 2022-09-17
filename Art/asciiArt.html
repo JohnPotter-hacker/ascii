@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="asciiArt.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.css" crossorigin="anonymous">
+    <title>Ascii Art Converter</title>
+</head>
+<body>
+    <div class="input">
+        <input type="file" name="picture" style = "margin-top: 50%; color: rgb(255, 72, 0); font-size: 18px;">
+    </div>
+    <div class = "input2" id = "input2">
+        <canvas id="preview" class = "watermark" style="float: right;"> </canvas>
+    </div>
+    <div style = "text-align: center;">
+        <button style = "width: 100px; height: 50px;margin-top: 15px;" id = 'btn-convert'>
+            Submit
+        </button>
+    </div>
+    <pre id="ascii" style = "font-size: 2px;"></pre>
+    <script>
+        toGrayScale = (r,g,b) => 0.21*r + 0.72*g + 0.07*b;
+
+        const canvas = document.getElementById('preview')
+        const fileInput = document.querySelector('input[type="file"]')
+        const context = canvas.getContext("2d");
+        const btnConvert = document.getElementById('btn-convert')
+        const asciiImage = document.querySelector('pre#ascii')
+
+        const MAXIMUM_WIDTH = 400
+        const MAXIMUM_HEIGHT = 400  
+
+        const getFontRatio = () => {
+        const pre = document.createElement('pre')
+        pre.style.display = 'inline'
+        pre.textContent = ' '
+
+        document.body.appendChild(pre)
+        const { width, height } = pre.getBoundingClientRect()
+        document.body.removeChild(pre)
+
+        return height / width
+        }
+
+        const fontRatio = getFontRatio()
+
+        const clampDimensions = (width, height) => {
+            const rectifiedWidth = Math.floor(fontRatio * width);
+            if (height > MAXIMUM_HEIGHT) {
+                const reducedWidth = Math.floor(rectifiedWidth * MAXIMUM_HEIGHT / height);
+                return [reducedWidth, MAXIMUM_HEIGHT]
+            }
+
+            if (width > MAXIMUM_WIDTH) {
+                const reducedHeight = Math.floor(height * MAXIMUM_WIDTH / rectifiedWidth);
+                return [MAXIMUM_WIDTH, reducedHeight]
+        }
+
+        return [rectifiedWidth, height];
+        }
+
+        const convertToGrayScales = (context, width, height) =>{
+             DataImage = context.getImageData(0,0,width,height)
+             const grayScales = [];
+             for(i = 0;i<DataImage.data.length;i+=4){
+                const r = DataImage.data[i];
+                const g = DataImage.data[i+1];
+                const b = DataImage.data[i+2];
+                GrayScale = toGrayScale(r,g,b);
+                DataImage.data[i] = DataImage.data[i+1] = DataImage.data[i+2] = GrayScale;
+                grayScales.push(GrayScale);
+             }
+            context.putImageData(DataImage, 0, 0)
+            return grayScales
+        }
+
+        const grayRamp = '$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/|()1{}[]?-_+~<>i!lI;:,"^`\'. '
+        const rampLength = grayRamp.length;
+        // Giá trị grayScale là một số nguyên từ 0 (black) đến 255 (white)
+        const getCharacterForGrayScale = grayScale => grayRamp[Math.ceil(((rampLength - 1) * grayScale) / 255)]
+        const drawAscii = (grayScales, width) => {
+        const ascii = grayScales.reduce((asciiImage, grayScale, index) => {
+            let nextChars = getCharacterForGrayScale(grayScale)
+
+            if ((index + 1) % width === 0) {
+            nextChars += '\n'
+            }
+
+            return asciiImage + nextChars
+        }, '')
+        asciiImage.textContent = ascii
+        }
+
+        fileInput.onchange = e =>{
+            const file = e.target.files[0]
+            const reader = new FileReader()
+            reader.onload = event =>{
+                image = new Image()
+                image.onload = () => {
+                    const [width, height] = clampDimensions(image.width, image.height)
+                    canvas.width = width
+                    canvas.height = height
+                    context.drawImage(image,0,0,width, height)
+                    const grayScales = convertToGrayScales(context, width, height)
+                    btnConvert.addEventListener('click', () => {drawAscii(grayScales, width) })
+                }
+                image.src = event.target.result
+            }
+            reader.readAsDataURL(file)
+        }
+
+    </script>
+</body>
+</html>
